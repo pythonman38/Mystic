@@ -7,6 +7,7 @@
 #include "Inv_PlayerController.generated.h"
 
 
+class UInv_InventoryComponent;
 class UInv_HUD_Widget;
 class UInputMappingContext;
 class UInputAction;
@@ -27,6 +28,9 @@ protected:
 
 	virtual void SetupInputComponent() override;
 
+	UFUNCTION(BlueprintCallable)
+	void ToggleInventory();
+
 private:
 	void PrimaryInteract();
 
@@ -41,6 +45,9 @@ private:
 	TObjectPtr<UInputAction> PrimaryInteractAction;
 
 	UPROPERTY(EditDefaultsOnly, Category = Inventory)
+	TObjectPtr<UInputAction> ToggleInventoryAction;
+
+	UPROPERTY(EditDefaultsOnly, Category = Inventory)
 	TSubclassOf<UInv_HUD_Widget> HUD_WidgetClass;
 
 	UPROPERTY()
@@ -53,4 +60,6 @@ private:
 	TEnumAsByte<ECollisionChannel> ItemTraceChannel;
 
 	TWeakObjectPtr<AActor> ThisActor, LastActor;
+
+	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
 };
