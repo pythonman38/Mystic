@@ -10,6 +10,8 @@ class UTextBlock;
 class UInv_InventoryItem;
 class UImage;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FSlottedItemClicked, int32, GridIndex, const FPointerEvent&, MouseEvent);
+
 UCLASS()
 class INVENTORY_API UInv_SlottedItem : public UUserWidget
 {
@@ -20,7 +22,12 @@ public:
 	
 	void SetInventoryItem(UInv_InventoryItem* Item);
 	
-	void UpdateStackCount(int32 StackCount);
+	void UpdateStackCount(int32 StackCount) const;
+	
+	FSlottedItemClicked OnSlottedItemClicked;
+	
+protected:
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -38,16 +45,16 @@ private:
 	bool bIsStackable{false};
 	
 public:
-	// Setters for private variables
-	void SetImage_Icon(UImage* Image) { Image_Icon = Image; }
-	void SetGridIndex(int32 Index) { GridIndex = Index; }
-	void SetGridDimensions(const FIntPoint& Dimensions) { GridDimensions = Dimensions; }
-	void SetIsStackable(bool bStackable) { bIsStackable = bStackable; }
-
 	// Getters for private variables
 	UImage* GetImage_Icon() const { return Image_Icon; }
 	int32 GetGridIndex() const { return GridIndex; }
 	FIntPoint GetGridDimensions() const { return GridDimensions; }
 	UInv_InventoryItem* GetInventoryItem() const { return InventoryItem.Get(); }
 	bool GetIsStackable() const { return bIsStackable; }
+	
+	// Setters for private variables
+	void SetImage_Icon(UImage* Image) { Image_Icon = Image; }
+	void SetGridIndex(int32 Index) { GridIndex = Index; }
+	void SetGridDimensions(const FIntPoint& Dimensions) { GridDimensions = Dimensions; }
+	void SetIsStackable(bool bStackable) { bIsStackable = bStackable; }
 };

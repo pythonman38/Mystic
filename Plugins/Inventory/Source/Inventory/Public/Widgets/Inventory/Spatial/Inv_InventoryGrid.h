@@ -8,6 +8,7 @@
 #include "Inv_InventoryGrid.generated.h"
 
 
+class UInv_HoverItem;
 struct FGameplayTag;
 struct FInv_ImageFragment;
 struct FInv_GridFragment;
@@ -24,15 +25,16 @@ class INVENTORY_API UInv_InventoryGrid : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	virtual void NativeOnInitialized() override;
-
 	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
 
 	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_ItemComponent* ItemComponent);
 
 	UFUNCTION()
 	void AddItem(UInv_InventoryItem* Item);
-
+	
+protected:
+	virtual void NativeOnInitialized() override;
+	
 private:
 	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
 
@@ -66,24 +68,39 @@ private:
 		const FGameplayTag& ItemType, const int32 MaxStackSize);
 
 	static FIntPoint GetItemDimensions(const FInv_ItemManifest& Manifest);
-	
-	bool CheckSlotConstraints(const UInv_GridSlot* GridSlot, const UInv_GridSlot* SubGridSlot, const TSet<int32>& CheckedIndices, 
-		TSet<int32>& OutTentativelyClaimed, const FGameplayTag& ItemType, const int32 MaxStackSize) const;
+
+	static bool CheckSlotConstraints(const UInv_GridSlot* GridSlot, const UInv_GridSlot* SubGridSlot, const TSet<int32>& CheckedIndices, 
+	                                 TSet<int32>& OutTentativelyClaimed, const FGameplayTag& ItemType, const int32 MaxStackSize);
 
 	static bool HasValidItem(const UInv_GridSlot* GridSlot);
 
 	static bool IsUpperLeftSlot(const UInv_GridSlot* GridSlot, const UInv_GridSlot* SubGridSlot);
-	
-	bool DoesItemTypeMatch(const UInv_InventoryItem* SubItem, const FGameplayTag& ItemType) const;
+
+	static bool DoesItemTypeMatch(const UInv_InventoryItem* SubItem, const FGameplayTag& ItemType);
 	
 	bool IsInGridBounds(const int32 StartIndex, const FIntPoint& ItemDimensions) const;
 	
 	int32 DetermineFillAmountForSlot(const bool bStackable, const int32 MaxStackSize, const int32 AmountToFill, const UInv_GridSlot* GridSlot) const;
 	
 	int32 GetStackAmount(const UInv_GridSlot* GridSlot) const;
+
+	static bool IsRightClick(const FPointerEvent& MouseEvent);
+
+	static bool IsLeftClick(const FPointerEvent& MouseEvent);
+	
+	void PickUp(UInv_InventoryItem* ClickedInventoryItem, const int32 GridIndex);
+	
+	void AssignHoverItem(UInv_InventoryItem* InventoryItem);
+	
+	void AssignHoverItem(UInv_InventoryItem* InventoryItem, const int32 GridIndex, const int32 PreviousGridIndex);
+	
+	void RemoveItemFromGrid(UInv_InventoryItem* InventoryItem, const int32 GridIndex);
 	
 	UFUNCTION()
 	void AddStacks(const FInv_SlotAvailabilityResult& Result);
+	
+	UFUNCTION()
+	void OnSlottedItemClicked(int32 GridIndex, const FPointerEvent& MouseEvent);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = true))
 	EInv_ItemCategory ItemCategory;
@@ -111,4 +128,10 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Inventory)
 	float TileSize;
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	TSubclassOf<UInv_HoverItem> HoverItemClass;
+	
+	UPROPERTY()
+	TObjectPtr<UInv_HoverItem> HoverItem;
 };

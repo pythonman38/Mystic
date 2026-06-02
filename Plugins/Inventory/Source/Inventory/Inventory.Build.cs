@@ -39,7 +39,8 @@ public class Inventory : ModuleRules
 				"Slate",
 				"SlateCore", 
 				"EnhancedInput",
-				"UMG"
+				"UMG",
+				"InputCore"
 			}
 			);
 		
