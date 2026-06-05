@@ -13,6 +13,16 @@ enum class EInv_ItemCategory : uint8
 	None
 };
 
+UENUM(BlueprintType)
+enum class EInv_TileQuadrant : uint8
+{
+	TopLeft,
+	TopRight,
+	BottomLeft,
+	BottomRight,
+	None
+};
+
 USTRUCT()
 struct FInv_SlotAvailability
 {
@@ -47,3 +57,35 @@ struct FInv_SlotAvailabilityResult
 	
 	TArray<FInv_SlotAvailability> SlotAvailabilities;
 };
+
+USTRUCT(BlueprintType)
+struct FInv_TileParameters
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Inventory)
+	FIntPoint TileCoordinates{};
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Inventory)
+	int32 TileIndex{INDEX_NONE};
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Inventory)
+	EInv_TileQuadrant TileQuadrant{EInv_TileQuadrant::None};
+};
+
+USTRUCT()
+struct FInv_SpaceQueryResult
+{
+	GENERATED_BODY()
+	
+	bool bHasSpace{false};
+	
+	TWeakObjectPtr<UInv_InventoryItem> ValidItem = nullptr;
+	
+	int32 UpperLeftIndex{INDEX_NONE};
+};
+
+inline bool operator==(const FInv_TileParameters& A, const FInv_TileParameters& B)
+{
+	return A.TileCoordinates == B.TileCoordinates && A.TileIndex == B.TileIndex && A.TileQuadrant == B.TileQuadrant;
+}

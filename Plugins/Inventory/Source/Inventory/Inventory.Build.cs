@@ -25,7 +25,6 @@ public class Inventory : ModuleRules
 			{
 				"Core",
 				"NetCore",
-				"StructUtils",
 				"GameplayTags",
 			}
 			);

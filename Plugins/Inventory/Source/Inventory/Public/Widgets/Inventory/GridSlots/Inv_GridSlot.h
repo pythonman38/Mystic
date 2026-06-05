@@ -35,9 +35,9 @@ public:
 	void SetInventoryItem(UInv_InventoryItem* Item);
 
 private:
-	bool bAvailable;
+	bool bAvailable{true};
 	
-	int32 TileIndex, StackCount, UpperLeftIndex{INDEX_NONE};
+	int32 TileIndex{INDEX_NONE}, StackCount{0}, UpperLeftIndex{INDEX_NONE};
 	
 	TWeakObjectPtr<UInv_InventoryItem> InventoryItem;
 	

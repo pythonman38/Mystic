@@ -18,6 +18,7 @@ class UInv_ItemComponent;
 class UInv_InventoryComponent;
 class UCanvasPanel;
 class UInv_GridSlot;
+enum class EInv_GridSlotState : uint8;
 
 UCLASS()
 class INVENTORY_API UInv_InventoryGrid : public UUserWidget
@@ -25,8 +26,6 @@ class INVENTORY_API UInv_InventoryGrid : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
-
 	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_ItemComponent* ItemComponent);
 
 	UFUNCTION()
@@ -34,6 +33,8 @@ public:
 	
 protected:
 	virtual void NativeOnInitialized() override;
+	
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	
 private:
 	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
@@ -94,13 +95,43 @@ private:
 	
 	void AssignHoverItem(UInv_InventoryItem* InventoryItem, const int32 GridIndex, const int32 PreviousGridIndex);
 	
-	void RemoveItemFromGrid(UInv_InventoryItem* InventoryItem, const int32 GridIndex);
+	void RemoveItemFromGrid(const UInv_InventoryItem* InventoryItem, const int32 GridIndex);
+	
+	void UpdateTileParameters(const FVector2D& CanvasPosition, const FVector2D& MousePosition);
+	
+	FIntPoint CalculateHoveredCoordinates(const FVector2D& CanvasPosition, const FVector2D& MousePosition) const;
+	
+	EInv_TileQuadrant CalculateTileQuadrant(const FVector2D& CanvasPosition, const FVector2D& MousePosition) const;
+	
+	void OnTileParametersUpdated(const FInv_TileParameters& Parameters);
+
+	static FIntPoint CalculateStartingCoordinate(const FIntPoint& Coordinate, const FIntPoint& Dimensions, const EInv_TileQuadrant Quadrant);
+	
+	FInv_SpaceQueryResult CheckHoverPosition(const FIntPoint& Position, const FIntPoint& Dimensions);
+	
+	bool CursorExitedCanvas(const FVector2D& BoundaryPosition, const FVector2D& BoundarySize, const FVector2D& Location);
+	
+	void HighlightSlots(const int32 Index, const FIntPoint& Dimensions);
+	
+	void UnHighlightSlots(const int32 Index, const FIntPoint& Dimensions);
+	
+	void ChangeHoverType(const int32 Index, const FIntPoint& Dimensions, EInv_GridSlotState GridSlotState);
 	
 	UFUNCTION()
 	void AddStacks(const FInv_SlotAvailabilityResult& Result);
 	
 	UFUNCTION()
 	void OnSlottedItemClicked(int32 GridIndex, const FPointerEvent& MouseEvent);
+	
+	FInv_TileParameters TileParameters, LastTileParameters;
+	
+	int32 ItemDropIndex{INDEX_NONE}, LastHighlightedIndex;
+	
+	FInv_SpaceQueryResult CurrentQueryResult;
+	
+	bool bMouseWithinCanvas, bLastMouseWithinCanvas;
+	
+	FIntPoint LastHightlightedDimensions;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = true))
 	EInv_ItemCategory ItemCategory;
@@ -134,4 +165,7 @@ private:
 	
 	UPROPERTY()
 	TObjectPtr<UInv_HoverItem> HoverItem;
+	
+public:
+	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
 };
