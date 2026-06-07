@@ -421,6 +421,8 @@ void UInv_InventoryGrid::ChangeHoverType(const int32 Index, const FIntPoint& Dim
 	LastHightlightedDimensions = Dimensions;
 }
 
+
+
 void UInv_InventoryGrid::AddStacks(const FInv_SlotAvailabilityResult& Result)
 {
 	if (!MatchesCategory(Result.Item.Get())) return;
@@ -450,7 +452,192 @@ void UInv_InventoryGrid::OnSlottedItemClicked(int32 GridIndex, const FPointerEve
 	if (!IsValid(HoverItem) && IsLeftClick(MouseEvent))
 	{
 		PickUp(ClickedInventoryItem, GridIndex);
+		return;
 	}
+	
+	// Do the hovered item and the clicked inventory item share a type, and are they stackable?
+	if (IsSameStackable(ClickedInventoryItem))
+	{
+		const int32 ClickedStackCount = GridSlots[GridIndex]->GetStackCount();
+		const FInv_StackableFragment* StackableFragment = ClickedInventoryItem->GetItemManifest().GetFragmentOfType<FInv_StackableFragment>();
+		const int32 MaxStackSize = StackableFragment->GetMaxStackSize(), RoomInClickedSlot = MaxStackSize - ClickedStackCount, HoveredStackCount = HoverItem->GetStackCount();
+		
+		// Should we swap their stack counts?
+		if (ShouldSwapStackCounts(RoomInClickedSlot, HoveredStackCount, MaxStackSize))
+		{
+			SwapStackCounts(ClickedStackCount, HoveredStackCount, GridIndex);
+			return;
+		}
+		// Should we consume the hover item's stacks?
+		if (ShouldConsumeHoverItemStacks(HoveredStackCount, RoomInClickedSlot))
+		{
+			ConsumeHoverItemStacks(ClickedStackCount, HoveredStackCount, GridIndex);
+			return;
+		}
+		// Should we fill in the stacks of the clicked item and not consume the hover item?
+		if (ShouldFillInStack(RoomInClickedSlot, HoveredStackCount))
+		{
+			FillInStack(RoomInClickedSlot, HoveredStackCount - RoomInClickedSlot, GridIndex);
+			return;
+		}
+		// CLicked slot is already full, so don't have to do anything (maybe play a sound).
+		if (RoomInClickedSlot == 0) return;
+	}
+	// Swap with the hover item.
+	SwapWithHoverItem(ClickedInventoryItem, GridIndex);
+}
+
+void UInv_InventoryGrid::OnGridSlotClicked(const int32 GridIndex, const FPointerEvent& MouseEvent)
+{
+	if (!IsValid(HoverItem) || !GridSlots.IsValidIndex(ItemDropIndex)) return;
+	
+	if (CurrentQueryResult.ValidItem.IsValid() && GridSlots.IsValidIndex(CurrentQueryResult.UpperLeftIndex))
+	{
+		OnSlottedItemClicked(CurrentQueryResult.UpperLeftIndex, MouseEvent);
+		return;
+	}
+	auto GridSlot = GridSlots[GridIndex];
+	if (!GridSlot->GetInventoryItem().IsValid())
+	{
+		PutDownOnIndex(ItemDropIndex);
+	}
+}
+
+void UInv_InventoryGrid::PutDownOnIndex(const int32 Index)
+{
+	AddItemAtIndex(HoverItem->GetInventoryItem(), Index, HoverItem->IsStackable(), HoverItem->GetStackCount());
+	UpdateGridSlots(HoverItem->GetInventoryItem(), Index, HoverItem->IsStackable(), HoverItem->GetStackCount());
+	ClearHoverItem();
+}
+
+void UInv_InventoryGrid::ClearHoverItem()
+{
+	if (!IsValid(HoverItem)) return;
+	
+	HoverItem->SetInventoryItem(nullptr);
+	HoverItem->SetIsStackable(false);
+	HoverItem->SetPreviousGridIndex(INDEX_NONE);
+	HoverItem->UpdateStackCount(0);
+	HoverItem->SetImageBrush(FSlateNoResource());
+	HoverItem->RemoveFromParent();
+	HoverItem = nullptr;
+	
+	ShowCursor();
+}
+
+UUserWidget* UInv_InventoryGrid::GetVisibleCursorWidget()
+{
+	if (!IsValid(GetOwningPlayer())) return nullptr;
+	
+	if (!IsValid(VisibleCursorWidget)) VisibleCursorWidget = CreateWidget<UUserWidget>(GetOwningPlayer(), VisibleCursorWidgetClass);
+	return VisibleCursorWidget;
+}
+
+UUserWidget* UInv_InventoryGrid::GetHiddenCursorWidget()
+{
+	if (!IsValid(GetOwningPlayer())) return nullptr;
+	
+	if (!IsValid(HiddenCursorWidget)) HiddenCursorWidget = CreateWidget<UUserWidget>(GetOwningPlayer(), HiddenCursorWidgetClass);
+	return HiddenCursorWidget;
+}
+
+bool UInv_InventoryGrid::IsSameStackable(const UInv_InventoryItem* ClickedInventoryItem) const
+{
+	const bool bIsSameItem = ClickedInventoryItem == HoverItem->GetInventoryItem(), bIsStackable = ClickedInventoryItem->IsStackable();
+	return bIsSameItem && bIsStackable && HoverItem->GetItemType().MatchesTagExact(ClickedInventoryItem->GetItemManifest().GetItemType());
+}
+
+void UInv_InventoryGrid::SwapWithHoverItem(UInv_InventoryItem* ClickedInventoryItem, const int32 GridIndex)
+{
+	if (!IsValid(HoverItem)) return;
+	
+	UInv_InventoryItem* TempInventoryItem = HoverItem->GetInventoryItem();
+	const int32 TempStackCount = HoverItem->GetStackCount();
+	const bool bTempIsStackable = HoverItem->IsStackable();
+	// Keep the same previous grid index
+	AssignHoverItem(ClickedInventoryItem, GridIndex, HoverItem->GetPreviousGridIndex());
+	RemoveItemFromGrid(ClickedInventoryItem, GridIndex);
+	AddItemAtIndex(TempInventoryItem, ItemDropIndex, bTempIsStackable, TempStackCount);
+	UpdateGridSlots(TempInventoryItem, ItemDropIndex, bTempIsStackable, TempStackCount);
+}
+
+bool UInv_InventoryGrid::ShouldSwapStackCounts(const int32 RoomInClickedSlot, const int32 HoveredStackCount,
+	const int32 MaxStackSize)
+{
+	return RoomInClickedSlot == 0 && HoveredStackCount < MaxStackSize;
+}
+
+void UInv_InventoryGrid::SwapStackCounts(const int32 ClickedStackCount, const int32 HoveredStackCount,
+	const int32 Index)
+{
+	UInv_GridSlot* GridSlot = GridSlots[Index];
+	GridSlot->SetStackCount(HoveredStackCount);
+	UInv_SlottedItem* ClickedSlottedItem = SlottedItems.FindChecked(Index);
+	ClickedSlottedItem->UpdateStackCount(HoveredStackCount);
+	HoverItem->UpdateStackCount(ClickedStackCount);
+}
+
+bool UInv_InventoryGrid::ShouldConsumeHoverItemStacks(const int32 HoveredStackCount,
+	const int32 RoomInClickedSlot)
+{
+	return RoomInClickedSlot >= HoveredStackCount;
+}
+
+void UInv_InventoryGrid::ConsumeHoverItemStacks(const int32 ClickedStackCount, const int32 HoveredStackCount,
+	const int32 Index)
+{
+	const int32 AmountToTransfer = HoveredStackCount, NewClickedStackCount = ClickedStackCount + AmountToTransfer;
+	GridSlots[Index]->SetStackCount(NewClickedStackCount);
+	SlottedItems.FindChecked(Index)->UpdateStackCount(NewClickedStackCount);
+	ClearHoverItem();
+	ShowCursor();
+	// Set the grids from grayed out to occupied.
+	const FInv_GridFragment* GridFragment = GridSlots[Index]->GetInventoryItem()->GetItemManifest().GetFragmentOfType<FInv_GridFragment>();
+	const FIntPoint Dimensions = GridFragment ? GridFragment->GetGridSize() : FIntPoint(1, 1);
+	HighlightSlots(Index, Dimensions);
+}
+
+bool UInv_InventoryGrid::ShouldFillInStack(const int32 RoomInClickedSlot, const int32 HoveredStackCount)
+{
+	return RoomInClickedSlot < HoveredStackCount;
+}
+
+void UInv_InventoryGrid::FillInStack(const int32 FillAmount, const int32 Remainder, const int32 Index)
+{
+	UInv_GridSlot* GridSlot = GridSlots[Index];
+	const int32 NewStackCount = GridSlot->GetStackCount() + FillAmount;
+	GridSlot->SetStackCount(NewStackCount);
+	auto ClickedSlottedItem = SlottedItems.FindChecked(Index);
+	ClickedSlottedItem->UpdateStackCount(NewStackCount);
+	HoverItem->UpdateStackCount(Remainder);
+}
+
+void UInv_InventoryGrid::ShowCursor()
+{
+	if (!IsValid(GetOwningPlayer())) return;
+	GetOwningPlayer()->SetMouseCursorWidget(EMouseCursor::Default, GetVisibleCursorWidget());
+}
+
+void UInv_InventoryGrid::HideCursor()
+{
+	if (!IsValid(GetOwningPlayer())) return;
+	GetOwningPlayer()->SetMouseCursorWidget(EMouseCursor::Default, GetHiddenCursorWidget());
+}
+
+void UInv_InventoryGrid::OnGridSlotHovered(const int32 GridIndex, const FPointerEvent& MouseEvent)
+{
+	if (IsValid(HoverItem)) return;
+	
+	UInv_GridSlot* GridSlot = GridSlots[GridIndex];
+	if (GridSlot->IsAvailable()) GridSlot->SetOccupiedTexture();
+}
+
+void UInv_InventoryGrid::OnGridSlotUnhovered(const int32 GridIndex, const FPointerEvent& MouseEvent)
+{
+	if (IsValid(HoverItem)) return;
+	
+	UInv_GridSlot* GridSlot = GridSlots[GridIndex];
+	if (GridSlot->IsAvailable()) GridSlot->SetUnoccupiedTexture();
 }
 
 void UInv_InventoryGrid::AddItem(UInv_InventoryItem* Item)
@@ -570,6 +757,9 @@ void UInv_InventoryGrid::ConstructGrid()
 			GridCPS->SetSize(FVector2D(TileSize));
 			GridCPS->SetPosition(TilePosition * TileSize);
 			GridSlots.Add(GridSlot);
+			GridSlot->GridSlotClicked.AddDynamic(this, &ThisClass::OnGridSlotClicked);
+			GridSlot->GridSlotHovered.AddDynamic(this, &ThisClass::OnGridSlotHovered);
+			GridSlot->GridSlotUnhovered.AddDynamic(this, &ThisClass::OnGridSlotUnhovered);
 		}
 	}
 }
