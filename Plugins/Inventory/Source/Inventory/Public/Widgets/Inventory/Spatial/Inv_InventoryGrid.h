@@ -38,6 +38,8 @@ public:
 	
 	void SetOwningCanvas(UCanvasPanel* OwningCanvas);
 	
+	void DropItem();
+	
 protected:
 	virtual void NativeOnInitialized() override;
 	

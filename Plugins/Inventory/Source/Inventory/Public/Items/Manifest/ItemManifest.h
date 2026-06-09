@@ -21,6 +21,8 @@ struct INVENTORY_API FInv_ItemManifest
 	
 	FGameplayTag GetItemType() const { return ItemType; }
 	
+	void SpawnPickupActor(const UObject* WorldContextObject, const FVector& SpawnLocation, const FRotator& SpawnRotation);
+	
 	template<typename T> requires std::derived_from<T, FInv_ItemFragment>
 	const T* GetFragmentOfTypeWithTag(const FGameplayTag& Tag) const;
 	
@@ -29,6 +31,9 @@ struct INVENTORY_API FInv_ItemManifest
 	
 	template<typename T> requires std::derived_from<T, FInv_ItemFragment>
 	T* GetFragmentOfTypeMutable();
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	TSubclassOf<AActor> PickupActorClass;
 	
 private:
 	UPROPERTY(EditAnywhere, Category = Inventory, meta = (ExcludeBaseStruct))

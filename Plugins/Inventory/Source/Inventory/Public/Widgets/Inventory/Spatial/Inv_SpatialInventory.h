@@ -23,6 +23,8 @@ public:
 	
 protected:
 	virtual void NativeOnInitialized() override;
+	
+	virtual  FReply NativeOnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 
 private:
 	UFUNCTION()

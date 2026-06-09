@@ -20,6 +20,8 @@ public:
 	
 	void PickedUp();
 	
+	void InitItemManifest(FInv_ItemManifest CopyOfManifest);
+	
 protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = Inventory)
 	void OnPickedUp();

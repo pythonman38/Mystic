@@ -75,6 +75,13 @@ void UInv_InventoryComponent::Server_AddStackToItem_Implementation(UInv_ItemComp
 	}
 }
 
+void UInv_InventoryComponent::Server_DropItem_Implementation(UInv_InventoryItem* Item, int32 StackCount)
+{
+	const int32 NewStackCount = Item->GetTotalStackCount() - StackCount;
+	(NewStackCount <= 0) ? InventoryList.RemoveEntry(Item) : Item->SetTotalStackCount(NewStackCount);
+	SpawnDroppedItem(Item, StackCount);
+}
+
 void UInv_InventoryComponent::ToggleInventoryMenu()
 {
 	bInventoryMenuOpen ? HandleToggleInventoryMenu(ESlateVisibility::Collapsed, false) : HandleToggleInventoryMenu(ESlateVisibility::Visible, true);
@@ -85,6 +92,20 @@ void UInv_InventoryComponent::AddRepSubObj(UObject* SubObj)
 	if (IsUsingRegisteredSubObjectList() && IsReadyForReplication() && IsValid(SubObj)) AddReplicatedSubObject(SubObj);
 }
 
+void UInv_InventoryComponent::SpawnDroppedItem(UInv_InventoryItem* Item, int32 StackCount) const
+{
+	// Spawn the dropped item in the level
+	const APawn* OwningPawn = OwningController->GetPawn();
+	FVector RotatedForward = OwningPawn->GetActorForwardVector();
+	RotatedForward = RotatedForward.RotateAngleAxis(FMath::FRandRange(DropSpawningAngleMin, DropSpawningAngleMax), FVector::UpVector);
+	FVector SpawnLocation = OwningPawn->GetActorLocation() + RotatedForward * FMath::FRandRange(DropSpawnDistanceMin, DropSpawnDistanceMax);
+	SpawnLocation.Z += RelativeSpawnElevation;
+	const FRotator SpawnRotation = FRotator::ZeroRotator;
+	// Have the Item Manifest spawn the pickup actor
+	FInv_ItemManifest& ItemManifest = Item->GetItemManifestMutable();
+	if (auto StackableFragment = ItemManifest.GetFragmentOfTypeMutable<FInv_StackableFragment>()) StackableFragment->SetStackCount(StackCount);
+	ItemManifest.SpawnPickupActor(this, SpawnLocation, SpawnRotation);
+}
 
 void UInv_InventoryComponent::BeginPlay()
 {
