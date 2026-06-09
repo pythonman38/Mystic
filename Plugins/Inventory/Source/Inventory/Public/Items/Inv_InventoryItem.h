@@ -22,6 +22,8 @@ public:
 
 	bool IsStackable() const;
 	
+	bool IsConsumable() const;
+
 private:
 	UPROPERTY(VisibleAnywhere, meta = (BaseStruct = "/Script/Inventory.Inv_ItemManifest"), Replicated)
 	FInstancedStruct ItemManifest;

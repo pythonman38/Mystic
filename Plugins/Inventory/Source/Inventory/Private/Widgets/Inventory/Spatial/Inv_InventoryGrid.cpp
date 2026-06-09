@@ -3,6 +3,7 @@
 
 #include "Widgets/Inventory/Spatial/Inv_InventoryGrid.h"
 
+#include "InputBehavior.h"
 #include "Inventory.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/CanvasPanel.h"
@@ -12,6 +13,7 @@
 #include "Items/Inv_InventoryItem.h"
 #include "Items/Components/Inv_ItemComponent.h"
 #include "Items/Fragments/Inv_FragmentTags.h"
+#include "Widgets/ItemPopUp/Inv_ItemPopUp.h"
 #include "Widgets/Inventory/GridSlots/Inv_GridSlot.h"
 #include "Widgets/Inventory/HoverItem/Inv_HoverItem.h"
 #include "Widgets/Inventory/SlottedItems/Inv_SlottedItem.h"
@@ -455,6 +457,12 @@ void UInv_InventoryGrid::OnSlottedItemClicked(int32 GridIndex, const FPointerEve
 		return;
 	}
 	
+	if (IsRightClick(MouseEvent))
+	{
+		CreateItemPopUp(GridIndex);
+		return;
+	}
+	
 	// Do the hovered item and the clicked inventory item share a type, and are they stackable?
 	if (IsSameStackable(ClickedInventoryItem))
 	{
@@ -612,6 +620,34 @@ void UInv_InventoryGrid::FillInStack(const int32 FillAmount, const int32 Remaind
 	HoverItem->UpdateStackCount(Remainder);
 }
 
+void UInv_InventoryGrid::CreateItemPopUp(const int32 GridIndex)
+{
+	UInv_InventoryItem* RightClickedItem = GridSlots[GridIndex]->GetInventoryItem().Get();
+	if (!IsValid(RightClickedItem) || IsValid(GridSlots[GridIndex]->GetItemPopUp().Get())) return;
+	
+	ItemPopUp = CreateWidget<UInv_ItemPopUp>(this, ItemPopUpClass);
+	GridSlots[GridIndex]->SetItemPopUp(ItemPopUp);
+	OwningCanvasPanel->AddChild(ItemPopUp);
+	auto CanvasSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(ItemPopUp);
+	const FVector2D MousePosition = UWidgetLayoutLibrary::GetMousePositionOnViewport(GetOwningPlayer());
+	CanvasSlot->SetPosition(MousePosition - ItemPopUpOffset);
+	CanvasSlot->SetSize(ItemPopUp->GetBoxSize());
+	const int32 SliderMax = GridSlots[GridIndex]->GetStackCount() - 1;
+	// Bind to the Split button if the item is stackable
+	if (RightClickedItem->IsStackable() && SliderMax > 0)
+	{
+		ItemPopUp->OnSplit.BindDynamic(this, &UInv_InventoryGrid::OnPopUpMenuSplit);
+		ItemPopUp->SetSliderParams(SliderMax, FMath::Max(1, GridSlots[GridIndex]->GetStackCount() / 2));
+	}
+	else ItemPopUp->CollapseSplitButton();
+	// Bind to the Drop button with no conditions
+	ItemPopUp->OnDrop.BindDynamic(this, &UInv_InventoryGrid::OnPopUpMenuDrop);
+	// Bind to the Consume button if the item is consumable (duh)
+	if (RightClickedItem->IsConsumable()) ItemPopUp->OnConsume.BindDynamic(this, &UInv_InventoryGrid::OnPopUpMenuConsume);
+	else ItemPopUp->CollapseConsumeButton();
+	
+}
+
 void UInv_InventoryGrid::ShowCursor()
 {
 	if (!IsValid(GetOwningPlayer())) return;
@@ -622,6 +658,11 @@ void UInv_InventoryGrid::HideCursor()
 {
 	if (!IsValid(GetOwningPlayer())) return;
 	GetOwningPlayer()->SetMouseCursorWidget(EMouseCursor::Default, GetHiddenCursorWidget());
+}
+
+void UInv_InventoryGrid::SetOwningCanvas(UCanvasPanel* OwningCanvas)
+{
+	OwningCanvasPanel = OwningCanvas;
 }
 
 void UInv_InventoryGrid::OnGridSlotHovered(const int32 GridIndex, const FPointerEvent& MouseEvent)
@@ -638,6 +679,29 @@ void UInv_InventoryGrid::OnGridSlotUnhovered(const int32 GridIndex, const FPoint
 	
 	UInv_GridSlot* GridSlot = GridSlots[GridIndex];
 	if (GridSlot->IsAvailable()) GridSlot->SetUnoccupiedTexture();
+}
+
+void UInv_InventoryGrid::OnPopUpMenuSplit(int32 SplitAmount, int32 Index)
+{
+	UInv_InventoryItem* RightClickedItem = GridSlots[Index]->GetInventoryItem().Get();
+	if (!IsValid(RightClickedItem) || !RightClickedItem->IsStackable()) return;
+	
+	const int32 UpperLeftIndex = GridSlots[Index]->GetUpperLeftIndex();
+	UInv_GridSlot* UpperLeftGridSlot = GridSlots[UpperLeftIndex];
+	const int32 StackCount = UpperLeftGridSlot->GetStackCount(), NewStackCount = StackCount - SplitAmount;
+	UpperLeftGridSlot->SetStackCount(NewStackCount);
+	SlottedItems.FindChecked(UpperLeftIndex)->UpdateStackCount(NewStackCount);
+	AssignHoverItem(RightClickedItem, UpperLeftIndex, UpperLeftIndex);
+	HoverItem->UpdateStackCount(SplitAmount);
+}
+
+void UInv_InventoryGrid::OnPopUpMenuDrop(int32 Index)
+{
+	
+}
+
+void UInv_InventoryGrid::OnPopUpMenuConsume(int32 Index)
+{
 }
 
 void UInv_InventoryGrid::AddItem(UInv_InventoryItem* Item)

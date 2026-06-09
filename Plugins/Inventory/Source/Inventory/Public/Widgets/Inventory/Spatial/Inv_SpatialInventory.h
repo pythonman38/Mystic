@@ -8,6 +8,7 @@
 #include "Inv_SpatialInventory.generated.h"
 
 
+class UCanvasPanel;
 class UWidgetSwitcher;
 class UInv_InventoryGrid;
 class UButton;
@@ -18,9 +19,10 @@ class INVENTORY_API UInv_SpatialInventory : public UInv_InventoryBase
 	GENERATED_BODY()
 
 public:
-	virtual void NativeOnInitialized() override;
-	
 	virtual FInv_SlotAvailabilityResult HasRoomForItem(UInv_ItemComponent* ItemComponent) const override;
+	
+protected:
+	virtual void NativeOnInitialized() override;
 
 private:
 	UFUNCTION()
@@ -37,6 +39,9 @@ private:
 	void SetActiveGrid(UInv_InventoryGrid* Grid, UButton* Button);
 	
 	TWeakObjectPtr<UInv_InventoryGrid> ActiveGrid;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UCanvasPanel> CanvasPanel;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWidgetSwitcher> Switcher;

@@ -8,6 +8,7 @@
 #include "Inv_InventoryGrid.generated.h"
 
 
+class UInv_ItemPopUp;
 class UInv_HoverItem;
 struct FGameplayTag;
 struct FInv_ImageFragment;
@@ -35,14 +36,14 @@ public:
 	
 	void HideCursor();
 	
+	void SetOwningCanvas(UCanvasPanel* OwningCanvas);
+	
 protected:
 	virtual void NativeOnInitialized() override;
 	
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	
 private:
-	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
-
 	void ConstructGrid();
 
 	FInv_SlotAvailabilityResult HasRoomForItem(const UInv_InventoryItem* Item);
@@ -145,6 +146,8 @@ private:
 	
 	void FillInStack(const int32 FillAmount, const int32 Remainder, const int32 Index);
 	
+	void CreateItemPopUp(const int32 GridIndex);
+	
 	UFUNCTION()
 	void AddStacks(const FInv_SlotAvailabilityResult& Result);
 	
@@ -159,6 +162,19 @@ private:
 	
 	UFUNCTION()
 	void OnGridSlotUnhovered(const int32 GridIndex, const FPointerEvent& MouseEvent);
+	
+	UFUNCTION()
+	void OnPopUpMenuSplit(int32 SplitAmount, int32 Index);
+	
+	UFUNCTION()
+	void OnPopUpMenuDrop(int32 Index);
+	
+	UFUNCTION()
+	void OnPopUpMenuConsume(int32 Index);
+	
+	TWeakObjectPtr<UInv_InventoryComponent> InventoryComponent;
+	
+	TWeakObjectPtr<UCanvasPanel> OwningCanvasPanel;
 	
 	FInv_TileParameters TileParameters, LastTileParameters;
 	
@@ -209,11 +225,20 @@ private:
 	UPROPERTY(EditAnywhere, Category = Inventory)
 	TSubclassOf<UUserWidget> HiddenCursorWidgetClass;
 	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	TSubclassOf<UInv_ItemPopUp> ItemPopUpClass;
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	FVector2D ItemPopUpOffset;
+	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> VisibleCursorWidget;
 	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> HiddenCursorWidget;
+	
+	UPROPERTY()
+	TObjectPtr<UInv_ItemPopUp> ItemPopUp;
 	
 public:
 	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
