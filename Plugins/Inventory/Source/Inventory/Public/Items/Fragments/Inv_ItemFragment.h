@@ -9,24 +9,20 @@ struct FInv_ItemFragment
 {
 	GENERATED_BODY()
 
-	FInv_ItemFragment()
-	{
-	}
+	FInv_ItemFragment() {}
 
 	FInv_ItemFragment(const FInv_ItemFragment& Other) = default;
 	FInv_ItemFragment& operator=(const FInv_ItemFragment&) = default;
 	FInv_ItemFragment(FInv_ItemFragment&& Other) = default;
 	FInv_ItemFragment& operator=(FInv_ItemFragment&&) = default;
 
-	virtual ~FInv_ItemFragment()
-	{
-	}
+	virtual ~FInv_ItemFragment() {}
 
 	FGameplayTag GetFragmentTag() const { return FragmentTag; }
 	void SetFragmentTag(FGameplayTag Tag) { FragmentTag = Tag; }
 
 private:
-	UPROPERTY(EditAnywhere, Category = Inventory)
+	UPROPERTY(EditAnywhere, Category = Inventory, meta = (Categories = FragmentTags))
 	FGameplayTag FragmentTag = FGameplayTag::EmptyTag;
 };
 
@@ -80,4 +76,34 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Inventory)
 	int32 StackCount{1};
+};
+
+USTRUCT(BlueprintType)
+struct FInv_ConsumableFragment : public FInv_ItemFragment
+{
+	GENERATED_BODY()
+	
+	virtual void OnConsume(APlayerController* PC) {}
+};
+
+USTRUCT(BlueprintType)
+struct FInv_HealthPotionFragment : public FInv_ConsumableFragment
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	float HealAmount{20.f};
+	
+	virtual void OnConsume(APlayerController* PC) override;
+};
+
+USTRUCT(BlueprintType)
+struct FInv_ManaPotionFragment : public FInv_ConsumableFragment
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	float ManaAmount{20.f};
+	
+	virtual void OnConsume(APlayerController* PC) override;
 };

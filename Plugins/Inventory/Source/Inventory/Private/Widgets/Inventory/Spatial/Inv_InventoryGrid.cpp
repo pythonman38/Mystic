@@ -715,6 +715,17 @@ void UInv_InventoryGrid::OnPopUpMenuDrop(int32 Index)
 
 void UInv_InventoryGrid::OnPopUpMenuConsume(int32 Index)
 {
+	UInv_InventoryItem* RightClickedItem = GridSlots[Index]->GetInventoryItem().Get();
+	if (!IsValid(RightClickedItem)) return;
+	
+	const int32 UpperLeftIndex = GridSlots[Index]->GetUpperLeftIndex();
+	UInv_GridSlot* UpperLeftGridSlot = GridSlots[UpperLeftIndex];
+	const int32 NewStackCount = UpperLeftGridSlot->GetStackCount() - 1;
+	UpperLeftGridSlot->SetStackCount(NewStackCount);
+	SlottedItems.FindChecked(UpperLeftIndex)->UpdateStackCount(NewStackCount);
+	// Tell the server we are consuming an item.
+	InventoryComponent->Server_ConsumeItem(RightClickedItem);
+	if (NewStackCount <= 0) RemoveItemFromGrid(RightClickedItem, Index);
 }
 
 void UInv_InventoryGrid::AddItem(UInv_InventoryItem* Item)

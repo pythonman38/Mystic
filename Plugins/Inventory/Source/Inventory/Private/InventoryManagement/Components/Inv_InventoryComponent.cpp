@@ -48,6 +48,14 @@ void UInv_InventoryComponent::TryAddItem(UInv_ItemComponent* ItemComponent)
 	}
 }
 
+void UInv_InventoryComponent::Server_ConsumeItem_Implementation(UInv_InventoryItem* Item)
+{
+	const int32 NewStackCount = Item->GetTotalStackCount() - 1;
+	NewStackCount <= 0 ? InventoryList.RemoveEntry(Item) : Item->SetTotalStackCount(NewStackCount);
+	// Get the Consumable Fragment and call Consume()
+	if (auto ConsumableFragment = Item->GetItemManifestMutable().GetFragmentOfTypeMutable<FInv_ConsumableFragment>()) ConsumableFragment->OnConsume(OwningController.Get());
+}
+
 void UInv_InventoryComponent::Server_AddNewItem_Implementation(UInv_ItemComponent* ItemComponent, int32 StackCount)
 {
 	auto NewItem = InventoryList.AddEntry(ItemComponent);
