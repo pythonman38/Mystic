@@ -4,10 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Types/Inv_GridTypes.h"
 #include "Widgets/Utils/Inv_WidgetUtils.h"
 #include "Inv_InventoryStatics.generated.h"
 
 
+class UInv_InventoryItem;
 class UInv_ItemComponent;
 class UInv_InventoryComponent;
 
@@ -25,6 +27,12 @@ public:
 	
 	template<typename T, typename FuncT>
 	static void ForEach2D(TArray<T>& Array, int32 Index, const FIntPoint& Range2D, int32 GridColumns, const FuncT& Function);
+	
+	UFUNCTION(BlueprintCallable, Category = Inventory)
+	static void ItemHovered(APlayerController* PC, UInv_InventoryItem* Item);
+	
+	UFUNCTION(BlueprintCallable, Category = Inventory)
+	static void ItemUnhovered(APlayerController* PC);
 };
 
 template <typename T, typename FuncT>

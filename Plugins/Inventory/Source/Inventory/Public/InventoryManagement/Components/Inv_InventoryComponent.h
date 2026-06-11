@@ -87,5 +87,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = Inventory)
 	TSubclassOf<UInv_InventoryBase> InventoryMenuClass;
 
+public:
+	UInv_InventoryBase* GetInventoryMenu() const { return InventoryMenu; };
 	
 };

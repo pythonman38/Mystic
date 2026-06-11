@@ -40,6 +40,8 @@ public:
 	
 	void DropItem();
 	
+	bool HasHoverItem() const;
+
 protected:
 	virtual void NativeOnInitialized() override;
 	

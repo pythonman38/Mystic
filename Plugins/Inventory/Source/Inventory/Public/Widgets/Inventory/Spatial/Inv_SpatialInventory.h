@@ -8,6 +8,7 @@
 #include "Inv_SpatialInventory.generated.h"
 
 
+class UInv_ItemDescription;
 class UCanvasPanel;
 class UWidgetSwitcher;
 class UInv_InventoryGrid;
@@ -21,10 +22,18 @@ class INVENTORY_API UInv_SpatialInventory : public UInv_InventoryBase
 public:
 	virtual FInv_SlotAvailabilityResult HasRoomForItem(UInv_ItemComponent* ItemComponent) const override;
 	
+	virtual void OnItemHovered(UInv_InventoryItem* Item) override;
+	
+	virtual void OnItemUnhovered() override;
+	
+	virtual bool HasHoverItem() const override;
+	
 protected:
 	virtual void NativeOnInitialized() override;
 	
 	virtual  FReply NativeOnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 private:
 	UFUNCTION()
@@ -40,7 +49,13 @@ private:
 
 	void SetActiveGrid(UInv_InventoryGrid* Grid, UButton* Button);
 	
+	void SetItemDescriptionSizeAndPosition(UInv_ItemDescription* Description, UCanvasPanel* Canvas) const;
+	
+	UInv_ItemDescription* GetItemDescription();
+	
 	TWeakObjectPtr<UInv_InventoryGrid> ActiveGrid;
+	
+	FTimerHandle DescriptionTimer;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCanvasPanel> CanvasPanel;
@@ -65,4 +80,13 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> Button_Craftables;
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	TSubclassOf<UInv_ItemDescription> ItemDescriptionClass;
+	
+	UPROPERTY()
+	TObjectPtr<UInv_ItemDescription> ItemDescription;
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	float DescriptionTimerDelay{0.5f};
 };

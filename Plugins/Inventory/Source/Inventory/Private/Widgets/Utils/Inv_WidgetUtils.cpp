@@ -15,6 +15,19 @@ FIntPoint UInv_WidgetUtils::GetPositionFromIndex(const int32 Index, const int32 
 	return FIntPoint(Index % Columns, Index / Columns);
 }
 
+FVector2D UInv_WidgetUtils::GetClampedWidgetPosition(const FVector2D& Boundary, const FVector2D& WidgetSize,
+	const FVector2D& MousePosition)
+{
+	FVector2D ClampedPosition = MousePosition;
+	// Adjust horizontal position to ensure that the widget stays within the boundary.
+	if (MousePosition.X + WidgetSize.X > Boundary.X) ClampedPosition.X = Boundary.X - WidgetSize.X;
+	if (MousePosition.X < 0.f) ClampedPosition.X = 0.f;
+	// Adjust vertical position to ensure that the widget stays within the boundary.
+	if (MousePosition.Y + WidgetSize.Y > Boundary.Y) ClampedPosition.Y = Boundary.Y - WidgetSize.Y;
+	if (MousePosition.Y < 0.f) ClampedPosition.Y = 0.f;
+	return ClampedPosition;
+}
+
 FVector2D UInv_WidgetUtils::GetWidgetPosition(UWidget* Widget)
 {
 	const FGeometry Geometry = Widget->GetCachedGeometry();
