@@ -7,6 +7,7 @@
 #include "StructUtils/InstancedStruct.h"
 #include "ItemManifest.generated.h"
 
+class UInv_CompositeBase;
 class UInv_InventoryItem;
 struct FInv_ItemFragment;
 
@@ -17,11 +18,9 @@ struct INVENTORY_API FInv_ItemManifest
 	
 	UInv_InventoryItem* Manifest(UObject* NewOuter);
 	
-	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
+	void SpawnPickupActor(const UObject* WorldContextObject, const FVector& SpawnLocation, const FRotator& SpawnRotation) const;
 	
-	FGameplayTag GetItemType() const { return ItemType; }
-	
-	void SpawnPickupActor(const UObject* WorldContextObject, const FVector& SpawnLocation, const FRotator& SpawnRotation);
+	void AssimilateInventoryFragments(UInv_CompositeBase* Composite) const;
 	
 	template<typename T> requires std::derived_from<T, FInv_ItemFragment>
 	const T* GetFragmentOfTypeWithTag(const FGameplayTag& Tag) const;
@@ -32,10 +31,15 @@ struct INVENTORY_API FInv_ItemManifest
 	template<typename T> requires std::derived_from<T, FInv_ItemFragment>
 	T* GetFragmentOfTypeMutable();
 	
+	template<typename T> requires std::derived_from<T, FInv_ItemFragment>
+	TArray<const T*> GetAllFragmentsOfType() const;
+	
 	UPROPERTY(EditAnywhere, Category = Inventory)
 	TSubclassOf<AActor> PickupActorClass;
 	
 private:
+	void ClearFragments();
+	
 	UPROPERTY(EditAnywhere, Category = Inventory, meta = (ExcludeBaseStruct))
 	TArray<TInstancedStruct<FInv_ItemFragment>> Fragments;
 	
@@ -44,6 +48,11 @@ private:
 	
 	UPROPERTY(EditAnywhere, Category = Inventory, meta = (Categories = GameItems))
 	FGameplayTag ItemType;
+	
+public:
+	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
+	FGameplayTag GetItemType() const { return ItemType; }
+	TArray<TInstancedStruct<FInv_ItemFragment>>& GetFragmentsMutable() { return Fragments; }
 };
 
 template <typename T>
@@ -82,4 +91,15 @@ T* FInv_ItemManifest::GetFragmentOfTypeMutable()
 	}
 	
 	return nullptr;
+}
+
+template <typename T> requires std::derived_from<T, FInv_ItemFragment>
+TArray<const T*> FInv_ItemManifest::GetAllFragmentsOfType() const
+{
+	TArray<const T*> Results;
+	for (const TInstancedStruct<FInv_ItemFragment>& Fragment : Fragments)
+	{
+		if (const T* FragmentPtr = Fragment.GetPtr<T>()) Results.Add(FragmentPtr);
+	}
+	return Results;
 }

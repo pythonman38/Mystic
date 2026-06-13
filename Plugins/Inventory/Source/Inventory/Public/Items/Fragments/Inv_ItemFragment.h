@@ -2,7 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "StructUtils/InstancedStruct.h"
 #include "Inv_ItemFragment.generated.h"
+
+class UInv_CompositeBase;
 
 USTRUCT(BlueprintType)
 struct FInv_ItemFragment
@@ -17,13 +20,27 @@ struct FInv_ItemFragment
 	FInv_ItemFragment& operator=(FInv_ItemFragment&&) = default;
 
 	virtual ~FInv_ItemFragment() {}
+	
+	virtual void Manifest() {}
 
 	FGameplayTag GetFragmentTag() const { return FragmentTag; }
+	
 	void SetFragmentTag(FGameplayTag Tag) { FragmentTag = Tag; }
 
 private:
 	UPROPERTY(EditAnywhere, Category = Inventory, meta = (Categories = FragmentTags))
 	FGameplayTag FragmentTag = FGameplayTag::EmptyTag;
+};
+
+USTRUCT(BlueprintType)
+struct FInv_InventoryItemFragment : public FInv_ItemFragment
+{
+	GENERATED_BODY()
+	
+	virtual void Assimilate(UInv_CompositeBase* Composite) const;
+	
+protected:
+	bool MatchesWidgetTag(const UInv_CompositeBase* Composite) const;
 };
 
 USTRUCT(BlueprintType)
@@ -46,11 +63,13 @@ private:
 };
 
 USTRUCT(BlueprintType)
-struct FInv_ImageFragment : public FInv_ItemFragment
+struct FInv_ImageFragment : public FInv_InventoryItemFragment
 {
 	GENERATED_BODY()
 
 	UTexture2D* GetIcon() const { return Icon; }
+	
+	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
 
 private:
 	UPROPERTY(EditAnywhere, Category = Inventory)
@@ -58,6 +77,64 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Inventory)
 	FVector2D IconDimensions{44.f, 44.f};
+};
+
+USTRUCT(BlueprintType)
+struct FInv_TextFragment : public FInv_InventoryItemFragment
+{
+	GENERATED_BODY()
+	
+public:
+	FText GetText() const { return FragmentText; }
+	
+	void SetText(const FText& Text) { FragmentText = Text; }
+	
+	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
+	
+private:
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	FText FragmentText;
+};
+
+USTRUCT(BlueprintType)
+struct FInv_LabeledNumberFragment : public FInv_InventoryItemFragment
+{
+	GENERATED_BODY()
+	
+	virtual void Manifest() override;
+	
+	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
+	
+	// When manifesting for the first time, this fragment will randomize.
+	bool bRandomizeOnManifest{true};
+	
+private:
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	FText Text_Label{};
+	
+	UPROPERTY(VisibleAnywhere, Category = Inventory)
+	float Value{0.f};
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	float Min{0};
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	float Max{0};
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	bool bCollapsedLabel{false};
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	bool bCollapsedValue{false};
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	int32 MinFractionalDigits{1};
+	
+	UPROPERTY(EditAnywhere, Category = Inventory)
+	int32 MaxFractionalDigits{1};
+	
+public:
+	float GetValue() const { return Value; }
 };
 
 USTRUCT(BlueprintType)
@@ -79,7 +156,7 @@ private:
 };
 
 USTRUCT(BlueprintType)
-struct FInv_ConsumableFragment : public FInv_ItemFragment
+struct FInv_ConsumeModifier : public FInv_LabeledNumberFragment
 {
 	GENERATED_BODY()
 	
@@ -87,23 +164,33 @@ struct FInv_ConsumableFragment : public FInv_ItemFragment
 };
 
 USTRUCT(BlueprintType)
-struct FInv_HealthPotionFragment : public FInv_ConsumableFragment
+struct FInv_ConsumableFragment : public FInv_InventoryItemFragment
 {
 	GENERATED_BODY()
 	
-	UPROPERTY(EditAnywhere, Category = Inventory)
-	float HealAmount{20.f};
+	virtual void OnConsume(APlayerController* PC);
+	
+	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
+	
+	virtual void Manifest() override;
+	
+private:
+	UPROPERTY(EditAnywhere, Category = Inventory, meta = (ExcludeBaseStruct))
+	TArray<TInstancedStruct<FInv_ConsumeModifier>> ConsumeModifiers;
+};
+
+USTRUCT(BlueprintType)
+struct FInv_HealthPotionFragment : public FInv_ConsumeModifier
+{
+	GENERATED_BODY()
 	
 	virtual void OnConsume(APlayerController* PC) override;
 };
 
 USTRUCT(BlueprintType)
-struct FInv_ManaPotionFragment : public FInv_ConsumableFragment
+struct FInv_ManaPotionFragment : public FInv_ConsumeModifier
 {
 	GENERATED_BODY()
-	
-	UPROPERTY(EditAnywhere, Category = Inventory)
-	float ManaAmount{20.f};
 	
 	virtual void OnConsume(APlayerController* PC) override;
 };
